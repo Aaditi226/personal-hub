@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Manager Pro</title>
+    
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3593/3593963.png">
+    
+    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Personal%20Manager%20Pro%22,%22short_name%22:%22PersoHub%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23ffffff%22,%22theme_color%22:%22%230f172a%22,%22icons%22:[{%22src%22:%22https://cdn-icons-png.flaticon.com/512/3593/3593963.png%22,%22sizes%22:%22512x512%22,%22type%22:%22image/png%22}]}">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* Custom scrollbar for mobile feel */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- Icons ---
+        const Calendar = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>;
+        const Book = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>;
+        const Bookmark = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>;
+        const Lightbulb = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path></svg>;
+        const Edit = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>;
+        const Trash2 = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
+        const QuoteIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 2.5-1 4-2 5zM16 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.248 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 2.5-1 4-2 5z"></path></svg>;
+
+        const PersonalManagerApp = () => {
+            const [activeTab, setActiveTab] = useState('library');
+            const [birthdays, setBirthdays] = useState([]);
+            const [facts, setFacts] = useState([]);
+            const [library, setLibrary] = useState([]);
+            const [watchlist, setWatchlist] = useState([]);
+            const [editingId, setEditingId] = useState(null);
+
+            // Form States
+            const [newBirthday, setNewBirthday] = useState({ name: '', date: '' });
+            const [newBook, setNewBook] = useState({ title: '', author: '', review: '', quotes: '', photo: null });
+            const [newSuggestion, setNewSuggestion] = useState({ title: '', author: '', note: '' });
+            const [newFact, setNewFact] = useState({ title: '', description: '' });
+
+            useEffect(() => {
+                const load = (key) => {
+                    const data = localStorage.getItem(key);
+                    return data ? JSON.parse(data) : [];
+                };
+                setBirthdays(load('birthdays'));
+                setFacts(load('facts'));
+                setLibrary(load('library'));
+                setWatchlist(load('watchlist'));
+            }, []);
+
+            const save = (key, data) => {
+                try { 
+                    localStorage.setItem(key, JSON.stringify(data)); 
+                } catch (e) { 
+                    alert("Storage full! Photos might be too large."); 
+                }
+            };
+
+            const downloadBackup = () => {
+                const data = { birthdays, facts, library, watchlist };
+                const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'my_personal_hub_data.json';
+                a.click();
+            };
+
+            const uploadBackup = (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const data = JSON.parse(event.target.result);
+                    setBirthdays(data.birthdays || []);
+                    setFacts(data.facts || []);
+                    setLibrary(data.library || []);
+                    setWatchlist(data.watchlist || []);
+                    save('birthdays', data.birthdays);
+                    save('facts', data.facts);
+                    save('library', data.library);
+                    save('watchlist', data.watchlist);
+                    alert("Data Restored Successfully!");
+                };
+                reader.readAsText(file);
+            };
+
+            const handlePhoto = (e, setter, state) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (file.size > 800000) { alert("File too large! Keep it under 800KB."); return; }
+                const reader = new FileReader();
+                reader.onloadend = () => setter({ ...state, photo: reader.result });
+                reader.readAsDataURL(file);
+            };
+
+            const addItem = (state, setter, item, key, resetter) => {
+                let updated;
+                if (editingId) {
+                    updated = state.map(i => i.id === editingId ? { ...item, id: editingId } : i);
+                    setEditingId(null);
+                } else {
+                    updated = [...state, { ...item, id: Date.now() }];
+                }
+                setter(updated); 
+                save(key, updated);
+                resetter();
+            };
+
+            const deleteItem = (id, state, setter, key) => {
+                const updated = state.filter(i => i.id !== id);
+                setter(updated); 
+                save(key, updated);
+            };
+
+            const startEdit = (item, setter) => {
+                setEditingId(item.id);
+                setter(item);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            return (
+                <div className="min-h-screen pb-20 font-sans">
+                    <div className="bg-white shadow-sm p-6 mb-8 text-center sticky top-0 z-50">
+                        <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
+                            <h1 className="text-2xl font-black text-slate-800 tracking-tighter uppercase">Personal Hub</h1>
+                            <div className="flex gap-2">
+                                <button onClick={downloadBackup} className="text-xs bg-slate-100 px-3 py-2 rounded-lg font-bold hover:bg-slate-200">Backup</button>
+                                <label className="text-xs bg-slate-800 text-white px-3 py-2 rounded-lg font-bold hover:bg-slate-700 cursor-pointer">
+                                    Restore
+                                    <input type="file" className="hidden" onChange={uploadBackup} />
+                                </label>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 justify-center overflow-x-auto pb-2">
+                            <TabBtn active={activeTab === 'birthdays'} onClick={() => setActiveTab('birthdays')} icon={<Calendar />} label="Birthdays" color="blue" />
+                            <TabBtn active={activeTab === 'library'} onClick={() => setActiveTab('library')} icon={<Book />} label="Library" color="emerald" />
+                            <TabBtn active={activeTab === 'watchlist'} onClick={() => setActiveTab('watchlist')} icon={<Bookmark />} label="Reading List" color="indigo" />
+                            <TabBtn active={activeTab === 'facts'} onClick={() => setActiveTab('facts')} icon={<Lightbulb />} label="Facts" color="orange" />
+                        </div>
+                    </div>
+
+                    <div className="container mx-auto max-w-4xl px-4">
+                        {/* Tab Content follows the same logic as your original code */}
+                        {activeTab === 'library' && (
+                            <div className="space-y-6">
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100">
+                                    <h2 className="text-lg font-bold mb-4 text-emerald-800">{editingId ? 'Edit Book' : 'Add Book'}</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <input className="border p-3 rounded-xl outline-none" placeholder="Title" value={newBook.title} onChange={e => setNewBook({...newBook, title: e.target.value})} />
+                                        <input className="border p-3 rounded-xl outline-none" placeholder="Author" value={newBook.author} onChange={e => setNewBook({...newBook, author: e.target.value})} />
+                                        <div className="md:col-span-2">
+                                            <label className="text-xs font-bold text-gray-400 block mb-1 uppercase">Cover Image</label>
+                                            <input type="file" className="text-sm" onChange={e => handlePhoto(e, setNewBook, newBook)} />
+                                        </div>
+                                        <textarea className="md:col-span-2 border p-3 rounded-xl h-24 outline-none" placeholder="Review..." value={newBook.review} onChange={e => setNewBook({...newBook, review: e.target.value})} />
+                                        <textarea className="md:col-span-2 border p-3 rounded-xl h-24 outline-none bg-emerald-50 text-emerald-900" placeholder="Quotes..." value={newBook.quotes} onChange={e => setNewBook({...newBook, quotes: e.target.value})} />
+                                        <button onClick={() => addItem(library, setLibrary, newBook, 'library', () => setNewBook({title:'', author:'', review:'', quotes:'', photo:null}))} className="md:col-span-2 bg-emerald-600 text-white py-3 rounded-xl font-bold">
+                                            {editingId ? 'Update' : 'Add to Library'}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 gap-6">
+                                    {library.map(b => (
+                                        <div key={b.id} className="bg-white p-6 rounded-2xl shadow-sm border flex flex-col md:flex-row gap-6 hover:shadow-md transition">
+                                            <div className="w-full md:w-32 h-48 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0 border self-center md:self-start">
+                                                {b.photo ? <img src={b.photo} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-slate-300"><Book /></div>}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <h3 className="font-bold text-xl text-slate-800 leading-tight">{b.title}</h3>
+                                                        <p className="text-emerald-600 text-sm font-medium uppercase">by {b.author}</p>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => startEdit(b, setNewBook)} className="p-2 text-slate-300 hover:text-blue-500"><Edit /></button>
+                                                        <button onClick={() => deleteItem(b.id, library, setLibrary, 'library')} className="p-2 text-slate-300 hover:text-red-500"><Trash2 /></button>
+                                                    </div>
+                                                </div>
+                                                <p className="text-slate-600 mb-4 whitespace-pre-wrap">{b.review}</p>
+                                                {b.quotes && (
+                                                    <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 relative">
+                                                        <p className="text-emerald-800 text-sm italic font-serif">"{b.quotes}"</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'watchlist' && (
+                            <div className="space-y-6">
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-indigo-100">
+                                    <h2 className="text-lg font-bold mb-4 text-indigo-800">New Suggestion</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <input className="border p-3 rounded-xl outline-none" placeholder="Title" value={newSuggestion.title} onChange={e => setNewSuggestion({...newSuggestion, title: e.target.value})} />
+                                        <input className="border p-3 rounded-xl outline-none" placeholder="Author" value={newSuggestion.author} onChange={e => setNewSuggestion({...newSuggestion, author: e.target.value})} />
+                                        <textarea className="md:col-span-2 border p-3 rounded-xl h-24 outline-none" placeholder="Note..." value={newSuggestion.note} onChange={e => setNewSuggestion({...newSuggestion, note: e.target.value})} />
+                                        <button onClick={() => addItem(watchlist, setWatchlist, newSuggestion, 'watchlist', () => setNewSuggestion({title:'', author:'', note:''}))} className="md:col-span-2 bg-indigo-600 text-white py-3 rounded-xl font-bold">Save</button>
+                                    </div>
+                                </div>
+                                {watchlist.map(s => (
+                                    <div key={s.id} className="bg-white p-5 rounded-2xl border flex justify-between items-center">
+                                        <div>
+                                            <p className="font-bold text-lg text-slate-800">{s.title}</p>
+                                            <p className="text-sm text-indigo-600">Author: {s.author}</p>
+                                            <p className="text-slate-500 text-sm italic">{s.note}</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => startEdit(s, setNewSuggestion)} className="text-slate-300 hover:text-blue-500"><Edit /></button>
+                                            <button onClick={() => deleteItem(s.id, watchlist, setWatchlist, 'watchlist')} className="text-slate-300 hover:text-red-500"><Trash2 /></button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {activeTab === 'birthdays' && (
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-100">
+                                <h2 className="text-xl font-bold mb-4 text-blue-800">Birthdays</h2>
+                                <div className="flex gap-2 mb-6">
+                                    <input className="border p-2 rounded-xl flex-1 outline-none" placeholder="Name" value={newBirthday.name} onChange={e => setNewBirthday({...newBirthday, name: e.target.value})} />
+                                    <input className="border p-2 rounded-xl outline-none" type="date" value={newBirthday.date} onChange={e => setNewBirthday({...newBirthday, date: e.target.value})} />
+                                    <button onClick={() => addItem(birthdays, setBirthdays, newBirthday, 'birthdays', () => setNewBirthday({name:'', date:''}))} className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold">Save</button>
+                                </div>
+                                {birthdays.map(b => (
+                                    <div key={b.id} className="py-3 border-b flex justify-between items-center px-2">
+                                        <span className="font-medium text-slate-700">{b.name} <span className="text-slate-400 text-sm ml-2">({b.date})</span></span>
+                                        <div className="flex gap-3">
+                                            <button onClick={() => startEdit(b, setNewBirthday)} className="text-slate-300 hover:text-blue-500"><Edit /></button>
+                                            <button onClick={() => deleteItem(b.id, birthdays, setBirthdays, 'birthdays')} className="text-gray-300 hover:text-red-500"><Trash2 /></button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {activeTab === 'facts' && (
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100">
+                                <h2 className="text-xl font-bold mb-4 text-orange-800">Random Facts</h2>
+                                <div className="space-y-3 mb-6">
+                                    <input className="w-full border p-3 rounded-xl font-bold outline-none" placeholder="Fact Title" value={newFact.title} onChange={e => setNewFact({...newFact, title: e.target.value})} />
+                                    <textarea className="w-full border p-3 rounded-xl h-24 outline-none" placeholder="Details" value={newFact.description} onChange={e => setNewFact({...newFact, description: e.target.value})} />
+                                    <button onClick={() => addItem(facts, setFacts, newFact, 'facts', () => setNewFact({title:'', description:''}))} className="bg-orange-600 text-white w-full py-3 rounded-xl font-bold">Add Fact</button>
+                                </div>
+                                {facts.map(f => (
+                                    <div key={f.id} className="p-4 bg-orange-50 border border-orange-100 rounded-xl mb-3 flex justify-between">
+                                        <div><h3 className="font-bold text-orange-900">{f.title}</h3><p className="text-orange-800 text-sm">{f.description}</p></div>
+                                        <div className="flex gap-3">
+                                            <button onClick={() => startEdit(f, setNewFact)} className="text-orange-300 hover:text-blue-500"><Edit /></button>
+                                            <button onClick={() => deleteItem(f.id, facts, setFacts, 'facts')} className="text-orange-300 hover:text-red-500"><Trash2 /></button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const TabBtn = ({ active, onClick, icon, label, color }) => {
+            const colors = {
+                blue: active ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-blue-50',
+                emerald: active ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-emerald-50',
+                indigo: active ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-indigo-50',
+                orange: active ? 'bg-orange-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-orange-50'
+            };
+            return (
+                <button onClick={onClick} className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${colors[color]}`}>
+                    {icon} <span className="hidden sm:inline">{label}</span>
+                </button>
+            );
+        };
+
+        ReactDOM.render(<PersonalManagerApp />, document.getElementById('root'));
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                self.addEventListener('fetch', function(event) {
+                    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+                });
+            `;
+            const blob = new Blob([swCode], {type: 'text/javascript'});
+            navigator.serviceWorker.register(URL.createObjectURL(blob));
+        }
+    </script>
+</body>
+</html>
